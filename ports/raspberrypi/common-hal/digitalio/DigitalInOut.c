@@ -10,6 +10,8 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 
+#include "supervisor/port.h"
+
 #include "common-hal/microcontroller/Pin.h"
 #include "shared-bindings/microcontroller/Pin.h"
 #include "shared-bindings/digitalio/DigitalInOut.h"
@@ -26,9 +28,19 @@ const mcu_pin_obj_t *common_hal_digitalio_validate_pin(mp_obj_t obj) {
 }
 #endif
 
+static inline bool is_bootsel_pin(const mcu_pin_obj_t *pin) {
+    #if defined(PICO_RP2040) && defined(CIRCUITPY_RP2040_BOOTSEL_PIN)
+    return pin->number == CIRCUITPY_RP2040_BOOTSEL_PIN;
+    #else
+    return false;
+    #endif
+}
+
 digitalinout_result_t common_hal_digitalio_digitalinout_construct(
     digitalio_digitalinout_obj_t *self, const mcu_pin_obj_t *pin) {
-    claim_pin(pin);
+    if (!is_bootsel_pin(pin)) {
+        claim_pin(pin);
+    }
     self->pin = pin;
     self->output = false;
     self->open_drain = false;
@@ -38,6 +50,10 @@ digitalinout_result_t common_hal_digitalio_digitalinout_construct(
         return DIGITALINOUT_OK;
     }
     #endif
+
+    if (is_bootsel_pin(pin)) {
+        return DIGITALINOUT_OK;
+    }
 
     // Set to input. No output value.
     gpio_init(pin->number);
@@ -70,6 +86,10 @@ digitalinout_result_t common_hal_digitalio_digitalinout_switch_to_input(
 digitalinout_result_t common_hal_digitalio_digitalinout_switch_to_output(
     digitalio_digitalinout_obj_t *self, bool value,
     digitalio_drive_mode_t drive_mode) {
+
+    if (is_bootsel_pin(self->pin)) {
+        return DIGITALINOUT_INPUT_ONLY;
+    }
 
     #if CIRCUITPY_CYW43
     if (IS_CYW(self)) {
@@ -105,6 +125,10 @@ digitalio_direction_t common_hal_digitalio_digitalinout_get_direction(
 
 void common_hal_digitalio_digitalinout_set_value(
     digitalio_digitalinout_obj_t *self, bool value) {
+    if (is_bootsel_pin(self->pin)) {
+        return;
+    }
+
     const uint8_t pin = self->pin->number;
     #if CIRCUITPY_CYW43
     if (IS_CYW(self)) {
@@ -129,6 +153,10 @@ void common_hal_digitalio_digitalinout_set_value(
 
 bool common_hal_digitalio_digitalinout_get_value(
     digitalio_digitalinout_obj_t *self) {
+    if (is_bootsel_pin(self->pin)) {
+        return port_boot_button_pressed();
+    }
+
     #if CIRCUITPY_CYW43
     if (IS_CYW(self)) {
         return cyw43_arch_gpio_get(self->pin->number);
@@ -140,6 +168,10 @@ bool common_hal_digitalio_digitalinout_get_value(
 digitalinout_result_t common_hal_digitalio_digitalinout_set_drive_mode(
     digitalio_digitalinout_obj_t *self,
     digitalio_drive_mode_t drive_mode) {
+    if (is_bootsel_pin(self->pin)) {
+        return DIGITALINOUT_INPUT_ONLY;
+    }
+
     #if CIRCUITPY_CYW43
     if (IS_CYW(self)) {
         if (drive_mode != DRIVE_MODE_PUSH_PULL) {
@@ -168,6 +200,14 @@ digitalio_drive_mode_t common_hal_digitalio_digitalinout_get_drive_mode(
 
 digitalinout_result_t common_hal_digitalio_digitalinout_set_pull(
     digitalio_digitalinout_obj_t *self, digitalio_pull_t pull) {
+    if (is_bootsel_pin(self->pin)) {
+        if (pull != PULL_NONE) {
+            return DIGITALINOUT_INVALID_PULL;
+        }
+        self->output = false;
+        return DIGITALINOUT_OK;
+    }
+
     #if CIRCUITPY_CYW43
     if (IS_CYW(self)) {
         if (pull != PULL_NONE) {
@@ -187,6 +227,13 @@ digitalinout_result_t common_hal_digitalio_digitalinout_set_pull(
 
 digitalio_pull_t common_hal_digitalio_digitalinout_get_pull(
     digitalio_digitalinout_obj_t *self) {
+    if (is_bootsel_pin(self->pin)) {
+        if (self->output) {
+            mp_raise_AttributeError(MP_ERROR_TEXT("Cannot get pull while in output mode"));
+        }
+        return PULL_NONE;
+    }
+
     uint32_t pin = self->pin->number;
     if (self->output) {
         mp_raise_AttributeError(MP_ERROR_TEXT("Cannot get pull while in output mode"));
@@ -202,10 +249,15 @@ digitalio_pull_t common_hal_digitalio_digitalinout_get_pull(
 }
 
 bool common_hal_digitalio_has_reg_op(digitalinout_reg_op_t op) {
+    (void)op;
     return true;
 }
 
 volatile uint32_t *common_hal_digitalio_digitalinout_get_reg(digitalio_digitalinout_obj_t *self, digitalinout_reg_op_t op, uint32_t *mask) {
+    if (is_bootsel_pin(self->pin)) {
+        return NULL;
+    }
+
     #if CIRCUITPY_CYW43
     if (IS_CYW(self)) {
         return NULL;
