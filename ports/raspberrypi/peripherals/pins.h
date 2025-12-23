@@ -67,6 +67,8 @@ extern const mcu_pin_obj_t pin_GPIO44;
 extern const mcu_pin_obj_t pin_GPIO45;
 extern const mcu_pin_obj_t pin_GPIO46;
 extern const mcu_pin_obj_t pin_GPIO47;
+#elif defined(CIRCUITPY_RP2040_BOOTSEL_PIN)
+extern const mcu_pin_obj_t pin_GPIO33;
 #endif
 
 #if CIRCUITPY_CYW43

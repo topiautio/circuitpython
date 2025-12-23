@@ -27,6 +27,14 @@ void reset_pin_number_cyw(uint8_t pin_no) {
 
 static uint64_t never_reset_pins;
 
+static inline bool is_bootsel_pin_number(uint8_t pin_number) {
+    #if defined(PICO_RP2040) && defined(CIRCUITPY_RP2040_BOOTSEL_PIN)
+    return pin_number == CIRCUITPY_RP2040_BOOTSEL_PIN;
+    #else
+    return false;
+    #endif
+}
+
 void reset_all_pins(void) {
     for (size_t i = 0; i < NUM_BANK0_GPIOS; i++) {
         if ((never_reset_pins & (1LL << i)) != 0) {
@@ -101,6 +109,9 @@ void claim_pin(const mcu_pin_obj_t *pin) {
         return;
     }
     #endif
+    if (is_bootsel_pin_number(pin->number)) {
+        return;
+    }
     if (pin->number >= NUM_BANK0_GPIOS) {
         return;
     }
@@ -108,6 +119,9 @@ void claim_pin(const mcu_pin_obj_t *pin) {
 }
 
 bool pin_number_is_free(uint8_t pin_number) {
+    if (is_bootsel_pin_number(pin_number)) {
+        return true;
+    }
     if (pin_number >= NUM_BANK0_GPIOS) {
         return false;
     }

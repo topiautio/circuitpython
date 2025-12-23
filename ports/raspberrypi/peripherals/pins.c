@@ -80,6 +80,10 @@ PIN(44);
 PIN(45);
 PIN(46);
 PIN(47);
+#elif defined(CIRCUITPY_RP2040_BOOTSEL_PIN)
+// RP2040 boards do not expose the BOOTSEL button on a GPIO, but allow sensing
+// it via the flash chip select line. Expose it as a pseudo GPIO for reading.
+PIN(CIRCUITPY_RP2040_BOOTSEL_PIN);
 #endif
 
 #if CIRCUITPY_CYW43

@@ -220,6 +220,8 @@ const mp_rom_map_elem_t mcu_pin_global_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_GPIO45), MP_ROM_PTR(&pin_GPIO45) },
     { MP_ROM_QSTR(MP_QSTR_GPIO46), MP_ROM_PTR(&pin_GPIO46) },
     { MP_ROM_QSTR(MP_QSTR_GPIO47), MP_ROM_PTR(&pin_GPIO47) },
+    #elif defined(CIRCUITPY_RP2040_BOOTSEL_PIN)
+    { MP_ROM_QSTR(MP_QSTR_GPIO33), MP_ROM_PTR(&pin_GPIO33) },
     #endif
     #if CIRCUITPY_CYW43
     { MP_ROM_QSTR(MP_QSTR_CYW0), MP_ROM_PTR(&pin_CYW0) },
